@@ -1,0 +1,9 @@
+av==12.2.0
+numpy==2.0.0
+opencv_python==4.9.0.80
+opencv_python_headless==4.10.0.84
+Pillow==10.4.0
+pytube==15.0.0
+streamlit==1.35.0
+streamlit_webrtc==0.47.7
+ultralytics==8.2.23
