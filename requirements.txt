@@ -8,3 +8,4 @@ streamlit==1.35.0
 streamlit_webrtc==0.47.7
 ultralytics==8.2.23
 fpdf==1.7.2
+google-generative-ai
