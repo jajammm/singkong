@@ -12,14 +12,9 @@ from ultralytics import YOLO
 import google.generativeai as genai
 import os
 from google import generativeai as genai
-from fpdf import FPDF
+from  fpdf import FPDF
 from datetime import datetime
 import tempfile
-
-# Konfigurasi logging
-import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 def clean_markdown(text):
     """Membersihkan format markdown dari teks untuk output PDF."""
@@ -127,7 +122,7 @@ try:
     GEMINI_CONFIGURED = True
 except Exception as e:
     GEMINI_CONFIGURED = False
-    logger.error(f"Error konfigurasi Gemini API: {str(e)}")
+    print(f"Error konfigurasi Gemini API: {str(e)}")
 
 # Fungsi untuk menggunakan Gemini API
 def get_disease_explanation(disease_label):
@@ -199,101 +194,30 @@ conn.commit()
 # Model class for object detection
 class VideoTransformer(VideoProcessorBase):
     def __init__(self):
-        try:
-            self.model = self.load_model()
-            self.confidence = 0.3
-            self.detected_labels = []
-        except Exception as e:
-            logger.error(f"Error loading model in VideoTransformer: {str(e)}")
-            st.error(f"Failed to load model: {str(e)}")
-            self.model = None
-    
-    def load_model(self):
-        try:
-            # Log the model path for debugging
-            model_path = settings.DETECTION_MODEL
-            logger.info(f"Loading model from path: {model_path}")
-            
-            # Check if file exists
-            if not os.path.exists(model_path):
-                logger.error(f"Model file not found at: {model_path}")
-                raise FileNotFoundError(f"Model file not found at: {model_path}")
-                
-            # Monkey patch torch.load to handle the weights_only issue
-            import torch
-            from functools import partial
-            
-            # Store original torch.load function
-            original_torch_load = torch.load
-            
-            # Create a patched version that explicitly sets weights_only=False
-            def patched_torch_load(*args, **kwargs):
-                kwargs['weights_only'] = False
-                return original_torch_load(*args, **kwargs)
-            
-            # Temporarily replace torch.load with our patched version
-            torch.load = patched_torch_load
-            
-            try:
-                # Attempt to load model with our patched torch.load
-                model = YOLO(model_path, task='detect')
-                logger.info("Model loaded successfully with patched torch.load")
-                return model
-            finally:
-                # Restore original torch.load function
-                torch.load = original_torch_load
-                
-        except Exception as e:
-            logger.error(f"Failed to load YOLO model: {str(e)}")
-            raise
+        self.model = YOLO(settings.DETECTION_MODEL)
+        self.confidence = 0.3
 
     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
-        if self.model is None:
-            # Return original frame if model loading failed
-            return frame
-            
         img = frame.to_ndarray(format="bgr24")
         
-        try:
-            # Perform object detection
-            results = self.model(img, stream=True)
-            
-            # Clear previous detected labels
-            self.detected_labels = []
-            
-            # Draw bounding boxes on the frame
-            for r in results:
-                boxes = r.boxes
-                for box in boxes:
-                    b = box.xyxy[0].cpu().numpy()  # get box coordinates in (top, left, bottom, right) format
-                    c = box.cls
-                    conf = box.conf.item()
-                    if conf >= self.confidence:
-                        x1, y1, x2, y2 = map(int, b)
-                        label = f"{self.model.names[int(c)]} {conf:.2f}"
-                        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                        cv2.putText(img, label, (x1, y1 - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-                        
-                        # Add to detected labels list
-                        if self.model.names[int(c)] not in self.detected_labels:
-                            self.detected_labels.append(self.model.names[int(c)])
-                            
-        except Exception as e:
-            logger.error(f"Error during detection: {str(e)}")
-            # Draw error text on the frame
-            cv2.putText(img, f"Detection error: {str(e)}", (10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        # Perform object detection
+        results = self.model(img, stream=True)
+        
+        # Draw bounding boxes on the frame
+        for r in results:
+            boxes = r.boxes
+            for box in boxes:
+                b = box.xyxy[0].cpu().numpy()  # get box coordinates in (top, left, bottom, right) format
+                c = box.cls
+                conf = box.conf.item()
+                if conf >= self.confidence:
+                    x1, y1, x2, y2 = map(int, b)
+                    label = f"{self.model.names[int(c)]} {conf:.2f}"
+                    cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.putText(img, label, (x1, y1 - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
         
         return av.VideoFrame.from_ndarray(img, format="bgr24")
-
-# Setting page layout
-st.set_page_config(
-    page_title="Deteksi Penyakit Daun Singkong",
-    page_icon="🍃",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # Login interface
 if 'logged_in' not in st.session_state:
@@ -312,6 +236,14 @@ if not st.session_state.logged_in:
         else:
             st.error("Invalid username or password")
 else:
+    # Setting page layout
+    st.set_page_config(
+        page_title="Deteksi Penyakit Daun Singkong",
+        page_icon="🍃",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+
     # Main page heading
     st.title("Deteksi Penyakit Daun Singkong")
 
@@ -335,21 +267,7 @@ else:
     model_path = settings.DETECTION_MODEL
 
     # Load Pre-trained ML Model
-    try:
-        st.sidebar.text(f"Loading model from: {model_path}")
-        
-        # Verifikasi model ada
-        if not os.path.exists(model_path):
-            st.sidebar.error(f"Model file tidak ditemukan di path: {model_path}")
-            model = None
-        else:
-            # Gunakan safe_load untuk memuat model
-            model = YOLO(model_path)
-            st.sidebar.success("Model berhasil dimuat!")
-    except Exception as e:
-        st.sidebar.error(f"Error loading model: {str(e)}")
-        model = None
-        logger.error(f"Failed to load YOLO model: {str(e)}")
+    model = YOLO(model_path)
 
     st.sidebar.header("Image/Video Config")
     source_radio = st.sidebar.radio(
@@ -371,12 +289,9 @@ else:
             try:
                 if source_img is None:
                     default_image_path = str(settings.DEFAULT_IMAGE)
-                    if os.path.exists(default_image_path):
-                        default_image = Image.open(default_image_path)
-                        st.image(default_image_path, caption="Default Image",
-                                use_column_width=True)
-                    else:
-                        st.error(f"Default image not found at: {default_image_path}")
+                    default_image = Image.open(default_image_path)
+                    st.image(default_image_path, caption="Default Image",
+                            use_column_width=True)
                 else:
                     uploaded_image = Image.open(source_img)
                     st.image(source_img, caption="Uploaded Image",
@@ -384,44 +299,34 @@ else:
             except Exception as ex:
                 st.error("Error occurred while opening the image.")
                 st.error(ex)
-                logger.error(f"Error opening image: {ex}")
 
         with col2:
             if source_img is None:
                 default_detected_image_path = str(settings.DEFAULT_DETECT_IMAGE)
-                if os.path.exists(default_detected_image_path):
-                    default_detected_image = Image.open(default_detected_image_path)
-                    st.image(default_detected_image_path, caption='Detected Image',
-                            use_column_width=True)
-                else:
-                    st.error(f"Default detected image not found at: {default_detected_image_path}")
+                default_detected_image = Image.open(
+                    default_detected_image_path)
+                st.image(default_detected_image_path, caption='Detected Image',
+                        use_column_width=True)
             else:
                 # Proses deteksi ketika tombol di sidebar diklik
                 if detect_button:
-                    if model is not None:
-                        try:
-                            res = model.predict(uploaded_image,
-                                            conf=confidence
-                                            )
-                            boxes = res[0].boxes
-                            res_plotted = res[0].plot()[:, :, ::-1]
-                            detected_image = Image.fromarray(res_plotted)
-                            st.image(res_plotted, caption='Detected Image',
-                                    use_column_width=True)
-                            save_detection(detected_image)
-                            
-                            # Simpan hasil deteksi untuk ditampilkan di luar kolom
-                            st.session_state.detection_boxes = boxes
-                            st.session_state.detection_model = model
-                            st.session_state.detection_confidence = confidence
-                        except Exception as e:
-                            st.error(f"Error during detection: {str(e)}")
-                            logger.error(f"Detection error: {str(e)}")
-                    else:
-                        st.error("Model belum dimuat dengan benar. Tidak dapat melakukan deteksi.")
+                    res = model.predict(uploaded_image,
+                                        conf=confidence
+                                        )
+                    boxes = res[0].boxes
+                    res_plotted = res[0].plot()[:, :, ::-1]
+                    detected_image = Image.fromarray(res_plotted)
+                    st.image(res_plotted, caption='Detected Image',
+                            use_column_width=True)
+                    save_detection(detected_image)
+                    
+                    # Simpan hasil deteksi untuk ditampilkan di luar kolom
+                    st.session_state.detection_boxes = boxes
+                    st.session_state.detection_model = model
+                    st.session_state.detection_confidence = confidence
         
         # Buat kontainer baru dengan lebar penuh untuk hasil deteksi
-        if source_img is not None and detect_button and 'detection_boxes' in st.session_state and st.session_state.detection_boxes is not None:
+        if source_img is not None and detect_button and 'detection_boxes' in st.session_state:
             st.markdown("---")
             st.header("Hasil Deteksi")
             
