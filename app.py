@@ -264,7 +264,8 @@ else:
         "Select Model Confidence (%)", 25, 100, 30)) / 100
 
     # Model path for Detection
-    model_path = settings.DETECTION_MODEL
+    model_path = os.path.join(os.getcwd(), 'weights', 'best.pt')
+
 
     # Load Pre-trained ML Model
     model = YOLO(model_path)
@@ -291,11 +292,11 @@ else:
                     default_image_path = str(settings.DEFAULT_IMAGE)
                     default_image = Image.open(default_image_path)
                     st.image(default_image_path, caption="Default Image",
-                            use_column_width=True)
+                            use_container_width=True)
                 else:
                     uploaded_image = Image.open(source_img)
                     st.image(source_img, caption="Uploaded Image",
-                            use_column_width=True)
+                            use_container_width=True)
             except Exception as ex:
                 st.error("Error occurred while opening the image.")
                 st.error(ex)
@@ -306,7 +307,7 @@ else:
                 default_detected_image = Image.open(
                     default_detected_image_path)
                 st.image(default_detected_image_path, caption='Detected Image',
-                        use_column_width=True)
+                        use_container_width=True)
             else:
                 # Proses deteksi ketika tombol di sidebar diklik
                 if detect_button:
@@ -317,7 +318,7 @@ else:
                     res_plotted = res[0].plot()[:, :, ::-1]
                     detected_image = Image.fromarray(res_plotted)
                     st.image(res_plotted, caption='Detected Image',
-                            use_column_width=True)
+                            use_container_width=True)
                     save_detection(detected_image)
                     
                     # Simpan hasil deteksi untuk ditampilkan di luar kolom
@@ -448,7 +449,7 @@ else:
                     try:
                         image = Image.open(io.BytesIO(image))
                         with st.expander(f"ID: {id}, Time: {timestamp}"):
-                            st.image(image, caption="Detected Image", use_column_width=False, width=500)
+                            st.image(image, caption="Detected Image", use_container_width=False, width=500)
                     except Exception as e:
                         st.error(f"Error menampilkan gambar ID: {id}: {str(e)}")
 
