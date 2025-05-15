@@ -22,8 +22,8 @@ SOURCES_LIST = [IMAGE, VIDEO, WEBCAM, RTSP, YOUTUBE]
 
 # Images config
 IMAGES_DIR = ROOT / 'images'
-DEFAULT_IMAGE = IMAGES_DIR / 'original teh.jpg'
-DEFAULT_DETECT_IMAGE = IMAGES_DIR / 'hasil teh.jpg'
+DEFAULT_IMAGE = IMAGES_DIR / 'original.jpg'
+DEFAULT_DETECT_IMAGE = IMAGES_DIR / 'hasil.jpg'
 
 # Videos config
 VIDEO_DIR = ROOT / 'videos'
