@@ -15,11 +15,11 @@ from google import generativeai as genai
 from fpdf import FPDF
 from datetime import datetime
 import tempfile
-import warnings
-import torch
 
-# Mendefinisikan file model
-DETECTION_MODEL_PATH = "weights/best.pt"  # Path relatif terhadap direktori aplikasi
+# Konfigurasi logging
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def clean_markdown(text):
     """Membersihkan format markdown dari teks untuk output PDF."""
@@ -127,7 +127,7 @@ try:
     GEMINI_CONFIGURED = True
 except Exception as e:
     GEMINI_CONFIGURED = False
-    print(f"Error konfigurasi Gemini API: {str(e)}")
+    logger.error(f"Error konfigurasi Gemini API: {str(e)}")
 
 # Fungsi untuk menggunakan Gemini API
 def get_disease_explanation(disease_label):
@@ -196,82 +196,104 @@ conn.execute('''CREATE TABLE IF NOT EXISTS detections
               image BLOB)''')
 conn.commit()
 
-# Function untuk mem-load model YOLO dengan aman
-@st.cache_resource
-def load_yolo_model(model_path):
-    try:
-        st.info(f"Loading model from {model_path}...")
-        
-        # Cek apakah file model ada
-        if not os.path.exists(model_path):
-            st.error(f"Model file not found: {model_path}")
-            st.info(f"Current directory: {os.getcwd()}")
-            st.info(f"Directory content: {os.listdir('.')}")
-            return None
-            
-        # Coba load model dengan setting device ke CPU secara explicit
-        model = YOLO(model_path, task='detect')
-        
-        st.success("Model loaded successfully!")
-        return model
-    except Exception as e:
-        st.error(f"Error loading model: {str(e)}")
-        
-        # Informasi debugging tambahan
-        st.write(f"Model path: {model_path}")
-        st.write(f"Directory exists: {os.path.exists(os.path.dirname(model_path))}")
-        st.write(f"Current working directory: {os.getcwd()}")
-        
-        return None
-
 # Model class for object detection
 class VideoTransformer(VideoProcessorBase):
     def __init__(self):
         try:
-            self.model = load_yolo_model(DETECTION_MODEL_PATH)
-            if self.model is None:
-                st.error("Failed to load model for video detection")
+            self.model = self.load_model()
             self.confidence = 0.3
             self.detected_labels = []
         except Exception as e:
-            st.error(f"Error initializing video transformer: {str(e)}")
+            logger.error(f"Error loading model in VideoTransformer: {str(e)}")
+            st.error(f"Failed to load model: {str(e)}")
             self.model = None
+    
+    def load_model(self):
+        try:
+            # Log the model path for debugging
+            model_path = settings.DETECTION_MODEL
+            logger.info(f"Loading model from path: {model_path}")
+            
+            # Check if file exists
+            if not os.path.exists(model_path):
+                logger.error(f"Model file not found at: {model_path}")
+                raise FileNotFoundError(f"Model file not found at: {model_path}")
+                
+            # Monkey patch torch.load to handle the weights_only issue
+            import torch
+            from functools import partial
+            
+            # Store original torch.load function
+            original_torch_load = torch.load
+            
+            # Create a patched version that explicitly sets weights_only=False
+            def patched_torch_load(*args, **kwargs):
+                kwargs['weights_only'] = False
+                return original_torch_load(*args, **kwargs)
+            
+            # Temporarily replace torch.load with our patched version
+            torch.load = patched_torch_load
+            
+            try:
+                # Attempt to load model with our patched torch.load
+                model = YOLO(model_path, task='detect')
+                logger.info("Model loaded successfully with patched torch.load")
+                return model
+            finally:
+                # Restore original torch.load function
+                torch.load = original_torch_load
+                
+        except Exception as e:
+            logger.error(f"Failed to load YOLO model: {str(e)}")
+            raise
 
     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
+        if self.model is None:
+            # Return original frame if model loading failed
+            return frame
+            
         img = frame.to_ndarray(format="bgr24")
         
         try:
-            # Perform object detection only if model is loaded
-            if self.model:
-                results = self.model(img, stream=True)
-                
-                # Reset detected labels for this frame
-                self.detected_labels = []
-                
-                # Draw bounding boxes on the frame
-                for r in results:
-                    boxes = r.boxes
-                    for box in boxes:
-                        b = box.xyxy[0].cpu().numpy()  # get box coordinates in (top, left, bottom, right) format
-                        c = box.cls
-                        conf = box.conf.item()
-                        if conf >= self.confidence:
-                            x1, y1, x2, y2 = map(int, b)
-                            label = f"{self.model.names[int(c)]} {conf:.2f}"
+            # Perform object detection
+            results = self.model(img, stream=True)
+            
+            # Clear previous detected labels
+            self.detected_labels = []
+            
+            # Draw bounding boxes on the frame
+            for r in results:
+                boxes = r.boxes
+                for box in boxes:
+                    b = box.xyxy[0].cpu().numpy()  # get box coordinates in (top, left, bottom, right) format
+                    c = box.cls
+                    conf = box.conf.item()
+                    if conf >= self.confidence:
+                        x1, y1, x2, y2 = map(int, b)
+                        label = f"{self.model.names[int(c)]} {conf:.2f}"
+                        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        cv2.putText(img, label, (x1, y1 - 10),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                        
+                        # Add to detected labels list
+                        if self.model.names[int(c)] not in self.detected_labels:
+                            self.detected_labels.append(self.model.names[int(c)])
                             
-                            # Add to detected labels
-                            if self.model.names[int(c)] not in self.detected_labels:
-                                self.detected_labels.append(self.model.names[int(c)])
-                                
-                            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                            cv2.putText(img, label, (x1, y1 - 10),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
         except Exception as e:
-            # Draw error text on frame
-            cv2.putText(img, f"Error: {str(e)}", (10, 30),
+            logger.error(f"Error during detection: {str(e)}")
+            # Draw error text on the frame
+            cv2.putText(img, f"Detection error: {str(e)}", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
         
         return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+# Setting page layout
+st.set_page_config(
+    page_title="Deteksi Penyakit Daun Singkong",
+    page_icon="🍃",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # Login interface
 if 'logged_in' not in st.session_state:
@@ -290,14 +312,6 @@ if not st.session_state.logged_in:
         else:
             st.error("Invalid username or password")
 else:
-    # Setting page layout
-    st.set_page_config(
-        page_title="Deteksi Penyakit Daun Singkong",
-        page_icon="🍃",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-
     # Main page heading
     st.title("Deteksi Penyakit Daun Singkong")
 
@@ -317,44 +331,33 @@ else:
     confidence = float(st.sidebar.slider(
         "Select Model Confidence (%)", 25, 100, 30)) / 100
 
+    # Model path for Detection
+    model_path = settings.DETECTION_MODEL
+
     # Load Pre-trained ML Model
-    model = load_yolo_model(DETECTION_MODEL_PATH)
-    
-    if model is None:
-        st.error("⚠️ Gagal memuat model deteksi. Aplikasi mungkin tidak berfungsi dengan benar.")
-        # Tambahkan area untuk upload model
-        st.sidebar.header("Upload Model")
-        uploaded_model = st.sidebar.file_uploader("Upload model file (.pt)", type="pt")
+    try:
+        st.sidebar.text(f"Loading model from: {model_path}")
         
-        if uploaded_model:
-            # Simpan model yang diupload ke file sementara
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.pt') as tmp_file:
-                tmp_file.write(uploaded_model.getvalue())
-                temp_model_path = tmp_file.name
-            
-            # Coba load model dari file sementara
-            model = load_yolo_model(temp_model_path)
-            
-            if model:
-                st.success("✅ Model berhasil diupload dan dimuat!")
-                # Update path model untuk digunakan di seluruh aplikasi
-                DETECTION_MODEL_PATH = temp_model_path
+        # Verifikasi model ada
+        if not os.path.exists(model_path):
+            st.sidebar.error(f"Model file tidak ditemukan di path: {model_path}")
+            model = None
+        else:
+            # Gunakan safe_load untuk memuat model
+            model = YOLO(model_path)
+            st.sidebar.success("Model berhasil dimuat!")
+    except Exception as e:
+        st.sidebar.error(f"Error loading model: {str(e)}")
+        model = None
+        logger.error(f"Failed to load YOLO model: {str(e)}")
 
     st.sidebar.header("Image/Video Config")
-    if 'IMAGE' in dir(settings) and 'WEBCAM' in dir(settings):
-        # Gunakan konstanta dari settings jika tersedia
-        source_radio = st.sidebar.radio(
-            "Select Source", [settings.IMAGE, settings.WEBCAM])
-    else:
-        # Definisikan konstanta jika settings tidak tersedia
-        IMAGE = "Image"
-        WEBCAM = "Webcam/Video"
-        source_radio = st.sidebar.radio(
-            "Select Source", [IMAGE, WEBCAM])
+    source_radio = st.sidebar.radio(
+        "Select Source", [settings.IMAGE, settings.WEBCAM])
 
     source_img = None
     # If image is selected
-    if source_radio == settings.IMAGE if 'IMAGE' in dir(settings) else IMAGE:
+    if source_radio == settings.IMAGE:
         source_img = st.sidebar.file_uploader(
             "Choose an image...", type=("jpg", "jpeg", "png", 'bmp', 'webp'))
         
@@ -367,13 +370,13 @@ else:
         with col1:
             try:
                 if source_img is None:
-                    if hasattr(settings, 'DEFAULT_IMAGE') and os.path.exists(str(settings.DEFAULT_IMAGE)):
-                        default_image_path = str(settings.DEFAULT_IMAGE)
+                    default_image_path = str(settings.DEFAULT_IMAGE)
+                    if os.path.exists(default_image_path):
                         default_image = Image.open(default_image_path)
                         st.image(default_image_path, caption="Default Image",
                                 use_column_width=True)
                     else:
-                        st.info("Upload an image to start detection")
+                        st.error(f"Default image not found at: {default_image_path}")
                 else:
                     uploaded_image = Image.open(source_img)
                     st.image(source_img, caption="Uploaded Image",
@@ -381,38 +384,41 @@ else:
             except Exception as ex:
                 st.error("Error occurred while opening the image.")
                 st.error(ex)
+                logger.error(f"Error opening image: {ex}")
 
         with col2:
             if source_img is None:
-                if hasattr(settings, 'DEFAULT_DETECT_IMAGE') and os.path.exists(str(settings.DEFAULT_DETECT_IMAGE)):
-                    default_detected_image_path = str(settings.DEFAULT_DETECT_IMAGE)
+                default_detected_image_path = str(settings.DEFAULT_DETECT_IMAGE)
+                if os.path.exists(default_detected_image_path):
                     default_detected_image = Image.open(default_detected_image_path)
                     st.image(default_detected_image_path, caption='Detected Image',
                             use_column_width=True)
                 else:
-                    st.info("Detection result will appear here")
+                    st.error(f"Default detected image not found at: {default_detected_image_path}")
             else:
                 # Proses deteksi ketika tombol di sidebar diklik
                 if detect_button:
-                    if model:
-                        with st.spinner("Detecting objects..."):
-                            try:
-                                res = model.predict(uploaded_image, conf=confidence)
-                                boxes = res[0].boxes
-                                res_plotted = res[0].plot()[:, :, ::-1]
-                                detected_image = Image.fromarray(res_plotted)
-                                st.image(res_plotted, caption='Detected Image',
-                                        use_column_width=True)
-                                save_detection(detected_image)
-                                
-                                # Simpan hasil deteksi untuk ditampilkan di luar kolom
-                                st.session_state.detection_boxes = boxes
-                                st.session_state.detection_model = model
-                                st.session_state.detection_confidence = confidence
-                            except Exception as e:
-                                st.error(f"Error during detection: {str(e)}")
+                    if model is not None:
+                        try:
+                            res = model.predict(uploaded_image,
+                                            conf=confidence
+                                            )
+                            boxes = res[0].boxes
+                            res_plotted = res[0].plot()[:, :, ::-1]
+                            detected_image = Image.fromarray(res_plotted)
+                            st.image(res_plotted, caption='Detected Image',
+                                    use_column_width=True)
+                            save_detection(detected_image)
+                            
+                            # Simpan hasil deteksi untuk ditampilkan di luar kolom
+                            st.session_state.detection_boxes = boxes
+                            st.session_state.detection_model = model
+                            st.session_state.detection_confidence = confidence
+                        except Exception as e:
+                            st.error(f"Error during detection: {str(e)}")
+                            logger.error(f"Detection error: {str(e)}")
                     else:
-                        st.error("No model loaded. Please upload a model first.")
+                        st.error("Model belum dimuat dengan benar. Tidak dapat melakukan deteksi.")
         
         # Buat kontainer baru dengan lebar penuh untuk hasil deteksi
         if source_img is not None and detect_button and 'detection_boxes' in st.session_state and st.session_state.detection_boxes is not None:
@@ -422,9 +428,6 @@ else:
             boxes = st.session_state.detection_boxes
             model = st.session_state.detection_model
             confidence = st.session_state.detection_confidence
-            
-            if len(boxes) == 0:
-                st.info("Tidak ada objek yang terdeteksi dengan confidence yang ditentukan.")
             
             for box in boxes:
                 label = model.names[int(box.cls)]
@@ -458,68 +461,64 @@ else:
                         # Tambahkan pemisah untuk setiap hasil deteksi
                         st.markdown("---")
 
-    elif source_radio == settings.WEBCAM if 'WEBCAM' in dir(settings) else WEBCAM:
+    elif source_radio == settings.WEBCAM:
         st.header("WebRTC Object Detection")
         
-        # Cek jika model tersedia sebelum menjalankan webrtc streamer
-        if model:
-            webrtc_ctx = webrtc_streamer(
-                key="object-detection",
-                mode=WebRtcMode.SENDRECV,
-                rtc_configuration=RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}),
-                video_processor_factory=VideoTransformer,
-                async_processing=True,
-            )
+        webrtc_ctx = webrtc_streamer(
+            key="object-detection",
+            mode=WebRtcMode.SENDRECV,
+            rtc_configuration=RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}),
+            video_processor_factory=VideoTransformer,
+            async_processing=True,
+        )
 
-            if webrtc_ctx.video_processor:
-                webrtc_ctx.video_processor.confidence = confidence
+        if webrtc_ctx.video_processor:
+            webrtc_ctx.video_processor.confidence = confidence
+            
+            # Tampilkan penjelasan untuk label yang terdeteksi
+            if hasattr(webrtc_ctx.video_processor, 'detected_labels') and webrtc_ctx.video_processor.detected_labels:
+                st.markdown("---")
+                st.header("Hasil Deteksi")
                 
-                # Tampilkan penjelasan untuk label yang terdeteksi
-                if hasattr(webrtc_ctx.video_processor, 'detected_labels') and webrtc_ctx.video_processor.detected_labels:
-                    st.markdown("---")
-                    st.header("Hasil Deteksi")
-                    
-                    if GEMINI_CONFIGURED:
-                        for label in webrtc_ctx.video_processor.detected_labels:
-                            # Gunakan container dengan lebar penuh untuk hasil deteksi
-                            with st.container():
-                                st.subheader(f"Deteksi: {label}")
-                                with st.spinner(f"Mendapatkan penjelasan untuk {label}..."):
-                                    explanation = get_disease_explanation(label)
-                                    st.markdown(explanation)
-                                
-                                # Opsi untuk menyimpan gambar dan penjelasan
-                                col1, col2, col3 = st.columns([1, 1, 4])
-                                
-                                with col1:
-                                    if st.button(f"Simpan ke database", key=f"save_{label}"):
-                                        if webrtc_ctx.video_frame_buffer and len(webrtc_ctx.video_frame_buffer) > 0:
-                                            img_array = webrtc_ctx.video_frame_buffer[-1].to_ndarray(format="bgr24")
-                                            pil_img = Image.fromarray(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB))
-                                            save_detection(pil_img)
-                                            st.success("Hasil deteksi berhasil disimpan!")
-                                
-                                with col2:
-                                    # Tambahkan tombol download PDF untuk webcam
+                if GEMINI_CONFIGURED:
+                    for label in webrtc_ctx.video_processor.detected_labels:
+                        # Gunakan container dengan lebar penuh untuk hasil deteksi
+                        with st.container():
+                            st.subheader(f"Deteksi: {label}")
+                            with st.spinner(f"Mendapatkan penjelasan untuk {label}..."):
+                                explanation = get_disease_explanation(label)
+                                st.markdown(explanation)
+                            
+                            # Opsi untuk menyimpan gambar dan penjelasan
+                            col1, col2, col3 = st.columns([1, 1, 4])
+                            
+                            with col1:
+                                if st.button(f"Simpan ke database", key=f"save_{label}"):
                                     if webrtc_ctx.video_frame_buffer and len(webrtc_ctx.video_frame_buffer) > 0:
                                         img_array = webrtc_ctx.video_frame_buffer[-1].to_ndarray(format="bgr24")
                                         pil_img = Image.fromarray(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB))
-                                        
-                                        pdf_data = create_detection_pdf(pil_img, label, 0.0, explanation)  # Confidence tidak diketahui untuk webcam
-                                        if pdf_data:
-                                            filename = f"deteksi_webcam_{label.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                                            st.download_button(
-                                                label="📥 Download PDF",
-                                                data=pdf_data,
-                                                file_name=filename,
-                                                mime="application/pdf",
-                                                key=f"download_webcam_{label}"
-                                            )
-                                
-                                # Tambahkan pemisah untuk setiap hasil deteksi
-                                st.markdown("---")
-        else:
-            st.error("No model loaded. Please upload a model first.")
+                                        save_detection(pil_img)
+                                        st.success("Hasil deteksi berhasil disimpan!")
+                            
+                            with col2:
+                                # Tambahkan tombol download PDF untuk webcam
+                                if webrtc_ctx.video_frame_buffer and len(webrtc_ctx.video_frame_buffer) > 0:
+                                    img_array = webrtc_ctx.video_frame_buffer[-1].to_ndarray(format="bgr24")
+                                    pil_img = Image.fromarray(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB))
+                                    
+                                    pdf_data = create_detection_pdf(pil_img, label, 0.0, explanation)  # Confidence tidak diketahui untuk webcam
+                                    if pdf_data:
+                                        filename = f"deteksi_webcam_{label.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                                        st.download_button(
+                                            label="📥 Download PDF",
+                                            data=pdf_data,
+                                            file_name=filename,
+                                            mime="application/pdf",
+                                            key=f"download_webcam_{label}"
+                                        )
+                            
+                            # Tambahkan pemisah untuk setiap hasil deteksi
+                            st.markdown("---")
 
     else:
         st.error("Please select a valid source type!")
