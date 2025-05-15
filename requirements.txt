@@ -7,4 +7,4 @@ pytube==15.0.0
 streamlit==1.35.0
 streamlit_webrtc==0.47.7
 ultralytics==8.2.23
-fpdf==0.5.1
+fpdf==1.7.2
