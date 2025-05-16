@@ -81,7 +81,7 @@ def create_detection_pdf(image, label, confidence, explanation):
             clean_line = clean_markdown(line)
             
             # Deteksi judul section (misalnya "PENJELASAN:", "DAMPAK:")
-            if "PENJELASAN:" in clean_line or "DAMPAK:" in clean_line or "REKOMENDASI" in clean_line:
+            if "Penjelasan:" in clean_line or "Dampak:" in clean_line or "Rekomendasi" in clean_line:
                 pdf.ln(5)
                 pdf.set_font('Arial', 'B', 12)  # Bold untuk judul
                 current_mode = 'title'
@@ -344,7 +344,7 @@ else:
                         
                         # Dapatkan penjelasan dari Gemini
                         if GEMINI_CONFIGURED:
-                            with st.spinner(f"Mendapatkan penjelasan untuk {label}..."):
+                            with st.spinner(f"Mendapatkan penjelasan hasil deteksi..."):
                                 explanation = get_disease_explanation(label)
                                 st.markdown(explanation)
                                 
