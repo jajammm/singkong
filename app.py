@@ -135,7 +135,7 @@ def get_disease_explanation(disease_label):
         Berikan penjelasan detail tentang penyakit daun singkong "{disease_label}" dengan format berikut (langsung jelaskan saja tanpa harus mengiyakan perintah saya):
         
         PENJELASAN:
-        [Jelaskan gejala dan penyebab penyakit pada daun singkong tersebut secara detail. Jika daun singkong sehat/healty tidak perlu menjelaskan gejala dan penybabnya, namun jelaskan ciri-cirinya saja]
+        [Jelaskan gejala dan penyebab penyakit pada daun singkong tersebut secara detail. Jika daun singkong sehat/healty tidak perlu dijelaskan. Namun jika hasil deteksinya sehat/healty anda jelaskan]
         
         DAMPAK:
         [Jelaskan dampak penyakit ini terhadap tanaman singkong]
