@@ -12,7 +12,7 @@ from ultralytics import YOLO
 import google.generativeai as genai
 import os
 from google import generativeai as genai
-from  fpdf import FPDF
+from fpdf import FPDF
 from datetime import datetime
 import tempfile
 
@@ -158,10 +158,6 @@ if 'detection_model' not in st.session_state:
 if 'detection_confidence' not in st.session_state:
     st.session_state.detection_confidence = None
 
-# Function to check login credentials
-def check_login(username, password):
-    return username == "admin" and password == "password"
-
 # Function to save detection result to database
 def save_detection(image):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -219,246 +215,162 @@ class VideoTransformer(VideoProcessorBase):
         
         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-# Login interface
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
+# Main page heading
+st.set_page_config(
+    page_title="Deteksi Penyakit Daun Singkong",
+    page_icon="🍃",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-if not st.session_state.logged_in:
-    st.title("Login")
+st.title("Deteksi Penyakit Daun Singkong")
+
+# Placeholder for detection history
+history_placeholder = st.empty()
+
+# Sidebar
+st.sidebar.header("Detection")
+
+# Model Options
+confidence = float(st.sidebar.slider(
+    "Select Model Confidence (%)", 25, 100, 30)) / 100
+
+# Model path for Detection
+model_path = os.path.join(os.getcwd(), 'weights', 'best.pt')
+
+
+# Load Pre-trained ML Model
+model = YOLO(model_path)
+
+st.sidebar.header("Image/Video Config")
+source_radio = st.sidebar.radio(
+    "Select Source", [settings.IMAGE, settings.WEBCAM])
+
+source_img = None
+# If image is selected
+if source_radio == settings.IMAGE:
+    source_img = st.sidebar.file_uploader(
+        "Choose an image...", type=("jpg", "jpeg", "png", 'bmp', 'webp'))
     
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    
-    if st.button("Login"):
-        if check_login(username, password):
-            st.session_state.logged_in = True
-            st.success("Login successful")
-        else:
-            st.error("Invalid username or password")
-else:
-    # Setting page layout
-    st.set_page_config(
-        page_title="Deteksi Penyakit Daun Singkong",
-        page_icon="🍃",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
+    # Tombol deteksi tetap di sidebar
+    detect_button = st.sidebar.button('Detect Objects')
 
-    # Main page heading
-    st.title("Deteksi Penyakit Daun Singkong")
+    # Buat dua kolom untuk gambar input dan hasil deteksi
+    col1, col2 = st.columns(2)
 
-    # Placeholder for detection history
-    history_placeholder = st.empty()
-
-    # Sidebar
-    st.sidebar.header("Detection")
-    
-    # st.sidebar.header("API Status")
-    # if GEMINI_CONFIGURED:
-    #     st.sidebar.success("✅ Gemini API terkonfigurasi dengan benar")
-    # else:
-    #     st.sidebar.error("❌ Gemini API tidak terkonfigurasi. Periksa file secrets.toml")
-
-    # Model Options
-    confidence = float(st.sidebar.slider(
-        "Select Model Confidence (%)", 25, 100, 30)) / 100
-
-    # Model path for Detection
-    model_path = os.path.join(os.getcwd(), 'weights', 'best.pt')
-
-
-    # Load Pre-trained ML Model
-    model = YOLO(model_path)
-
-    st.sidebar.header("Image/Video Config")
-    source_radio = st.sidebar.radio(
-        "Select Source", [settings.IMAGE, settings.WEBCAM])
-
-    source_img = None
-    # If image is selected
-    if source_radio == settings.IMAGE:
-        source_img = st.sidebar.file_uploader(
-            "Choose an image...", type=("jpg", "jpeg", "png", 'bmp', 'webp'))
-        
-        # Tombol deteksi tetap di sidebar
-        detect_button = st.sidebar.button('Detect Objects')
-
-        # Buat dua kolom untuk gambar input dan hasil deteksi
-        col1, col2 = st.columns(2)
-
-        with col1:
-            try:
-                if source_img is None:
-                    default_image_path = str(settings.DEFAULT_IMAGE)
-                    default_image = Image.open(default_image_path)
-                    st.image(default_image_path, caption="Default Image",
-                            use_container_width=True)
-                else:
-                    uploaded_image = Image.open(source_img)
-                    st.image(source_img, caption="Uploaded Image",
-                            use_container_width=True)
-            except Exception as ex:
-                st.error("Error occurred while opening the image.")
-                st.error(ex)
-
-        with col2:
+    with col1:
+        try:
             if source_img is None:
-                default_detected_image_path = str(settings.DEFAULT_DETECT_IMAGE)
-                default_detected_image = Image.open(
-                    default_detected_image_path)
-                st.image(default_detected_image_path, caption='Detected Image',
+                default_image_path = str(settings.DEFAULT_IMAGE)
+                default_image = Image.open(default_image_path)
+                st.image(default_image_path, caption="Default Image",
                         use_container_width=True)
             else:
-                # Proses deteksi ketika tombol di sidebar diklik
-                if detect_button:
-                    res = model.predict(uploaded_image,
-                                        conf=confidence
-                                        )
-                    boxes = res[0].boxes
-                    res_plotted = res[0].plot()[:, :, ::-1]
-                    detected_image = Image.fromarray(res_plotted)
-                    st.image(res_plotted, caption='Detected Image',
-                            use_container_width=True)
-                    save_detection(detected_image)
-                    
-                    # Simpan hasil deteksi untuk ditampilkan di luar kolom
-                    st.session_state.detection_boxes = boxes
-                    st.session_state.detection_model = model
-                    st.session_state.detection_confidence = confidence
-        
-        # Buat kontainer baru dengan lebar penuh untuk hasil deteksi
-        if source_img is not None and detect_button and 'detection_boxes' in st.session_state:
-            st.markdown("---")
-            st.header("Hasil Deteksi")
-            
-            boxes = st.session_state.detection_boxes
-            model = st.session_state.detection_model
-            confidence = st.session_state.detection_confidence
-            
-            for box in boxes:
-                label = model.names[int(box.cls)]
-                conf = box.conf.item()
-                if conf >= confidence:
-                    with st.container():
-                        st.subheader(f"Deteksi: {label} (Confidence: {conf:.2f})")
-                        
-                        # Dapatkan penjelasan dari Gemini
-                        if GEMINI_CONFIGURED:
-                            with st.spinner(f"Mendapatkan penjelasan hasil deteksi..."):
-                                explanation = get_disease_explanation(label)
-                                st.markdown(explanation)
-                                
-                                # Tambahkan tombol download PDF
-                                col1, col2 = st.columns([1, 6])
-                                with col1:
-                                    pdf_data = create_detection_pdf(detected_image, label, conf, explanation)
-                                    if pdf_data:
-                                        filename = f"deteksi_{label.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                                        st.download_button(
-                                            label="📥 Download Hasil Deteksi",
-                                            data=pdf_data,
-                                            file_name=filename,
-                                            mime="application/pdf",
-                                            key=f"download_{label}_{conf}"
-                                        )
-                        else:
-                            st.warning("Gemini API tidak terkonfigurasi. Periksa file secrets.toml")
-                        
-                        # Tambahkan pemisah untuk setiap hasil deteksi
-                        st.markdown("---")
+                uploaded_image = Image.open(source_img)
+                st.image(source_img, caption="Uploaded Image",
+                        use_container_width=True)
+        except Exception as ex:
+            st.error("Error occurred while opening the image.")
+            st.error(ex)
 
-    elif source_radio == settings.WEBCAM:
-        st.header("WebRTC Object Detection")
-        
-        webrtc_ctx = webrtc_streamer(
-            key="object-detection",
-            mode=WebRtcMode.SENDRECV,
-            rtc_configuration=RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}),
-            video_processor_factory=VideoTransformer,
-            async_processing=True,
-        )
-
-        if webrtc_ctx.video_processor:
-            webrtc_ctx.video_processor.confidence = confidence
-            
-            # Tampilkan penjelasan untuk label yang terdeteksi
-            if hasattr(webrtc_ctx.video_processor, 'detected_labels') and webrtc_ctx.video_processor.detected_labels:
-                st.markdown("---")
-                st.header("Hasil Deteksi")
+    with col2:
+        if source_img is None:
+            default_detected_image_path = str(settings.DEFAULT_DETECT_IMAGE)
+            default_detected_image = Image.open(
+                default_detected_image_path)
+            st.image(default_detected_image_path, caption='Detected Image',
+                    use_container_width=True)
+        else:
+            # Proses deteksi ketika tombol di sidebar diklik
+            if detect_button:
+                res = model.predict(uploaded_image,
+                                    conf=confidence
+                                    )
+                boxes = res[0].boxes
+                res_plotted = res[0].plot()[:, :, ::-1]
+                detected_image = Image.fromarray(res_plotted)
+                st.image(res_plotted, caption='Detected Image',
+                        use_container_width=True)
+                save_detection(detected_image)
                 
-                if GEMINI_CONFIGURED:
-                    for label in webrtc_ctx.video_processor.detected_labels:
-                        # Gunakan container dengan lebar penuh untuk hasil deteksi
-                        with st.container():
-                            st.subheader(f"Deteksi: {label}")
-                            with st.spinner(f"Mendapatkan penjelasan untuk {label}..."):
-                                explanation = get_disease_explanation(label)
-                                st.markdown(explanation)
+                # Simpan hasil deteksi untuk ditampilkan di luar kolom
+                st.session_state.detection_boxes = boxes
+                st.session_state.detection_model = model
+                st.session_state.detection_confidence = confidence
+    
+    # Buat kontainer baru dengan lebar penuh untuk hasil deteksi
+    if source_img is not None and detect_button and 'detection_boxes' in st.session_state:
+        st.markdown("---")
+        st.header("Hasil Deteksi")
+        
+        boxes = st.session_state.detection_boxes
+        model = st.session_state.detection_model
+        confidence = st.session_state.detection_confidence
+        
+        for box in boxes:
+            label = model.names[int(box.cls)]
+            conf = box.conf.item()
+            if conf >= confidence:
+                with st.container():
+                    st.subheader(f"Deteksi: {label} (Confidence: {conf:.2f})")
+                    
+                    # Dapatkan penjelasan dari Gemini
+                    if GEMINI_CONFIGURED:
+                        with st.spinner(f"Mendapatkan penjelasan hasil deteksi..."):
+                            explanation = get_disease_explanation(label)
+                            st.markdown(explanation)
                             
-                            # Opsi untuk menyimpan gambar dan penjelasan
-                            col1, col2, col3 = st.columns([1, 1, 4])
-                            
+                            # Tambahkan tombol download PDF
+                            col1, col2 = st.columns([1, 6])
                             with col1:
-                                if st.button(f"Simpan ke database", key=f"save_{label}"):
-                                    if webrtc_ctx.video_frame_buffer and len(webrtc_ctx.video_frame_buffer) > 0:
-                                        img_array = webrtc_ctx.video_frame_buffer[-1].to_ndarray(format="bgr24")
-                                        pil_img = Image.fromarray(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB))
-                                        save_detection(pil_img)
-                                        st.success("Hasil deteksi berhasil disimpan!")
-                            
-                            with col2:
-                                # Tambahkan tombol download PDF untuk webcam
-                                if webrtc_ctx.video_frame_buffer and len(webrtc_ctx.video_frame_buffer) > 0:
-                                    img_array = webrtc_ctx.video_frame_buffer[-1].to_ndarray(format="bgr24")
-                                    pil_img = Image.fromarray(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB))
-                                    
-                                    pdf_data = create_detection_pdf(pil_img, label, 0.0, explanation)  # Confidence tidak diketahui untuk webcam
-                                    if pdf_data:
-                                        filename = f"deteksi_webcam_{label.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                                        st.download_button(
-                                            label="📥 Download PDF",
-                                            data=pdf_data,
-                                            file_name=filename,
-                                            mime="application/pdf",
-                                            key=f"download_webcam_{label}"
-                                        )
-                            
-                            # Tambahkan pemisah untuk setiap hasil deteksi
-                            st.markdown("---")
+                                pdf_data = create_detection_pdf(detected_image, label, conf, explanation)
+                                if pdf_data:
+                                    filename = f"deteksi_{label.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                                    st.download_button(
+                                        label="📥 Download Hasil Deteksi",
+                                        data=pdf_data,
+                                        file_name=filename,
+                                        mime="application/pdf",
+                                        key=f"download_{label}_{conf}"
+                                    )
+                    else:
+                        st.warning("Gemini API tidak terkonfigurasi. Periksa file secrets.toml")
+                    
+                    # Tambahkan pemisah untuk setiap hasil deteksi
+                    st.markdown("---")
+else:
+    st.error("Please select a valid source type!")
 
-    else:
-        st.error("Please select a valid source type!")
+# Detection history and delete button
+if st.sidebar.button('Detection History'):
+    with history_placeholder.container():
+        st.header("Detection History")
+        if st.button("Close History"):
+            history_placeholder.empty()
+        
+        # Ambil history dari database
+        history = load_detection_history()
+        
+        # Periksa apakah history kosong
+        if not history or len(history) == 0:
+            st.info("Belum ada history deteksi. Silakan lakukan deteksi terlebih dahulu.")
+        else:
+            # Tampilkan history jika ada
+            st.success(f"Ditemukan {len(history)} hasil deteksi.")
+            for id, timestamp, image in history:
+                try:
+                    image = Image.open(io.BytesIO(image))
+                    with st.expander(f"ID: {id}, Time: {timestamp}"):
+                        st.image(image, caption="Detected Image", use_container_width=False, width=500)
+                except Exception as e:
+                    st.error(f"Error menampilkan gambar ID: {id}: {str(e)}")
 
-    # Detection history and delete button
-    if st.sidebar.button('Detection History'):
-        with history_placeholder.container():
-            st.header("Detection History")
-            if st.button("Close History"):
-                history_placeholder.empty()
-            
-            # Ambil history dari database
-            history = load_detection_history()
-            
-            # Periksa apakah history kosong
-            if not history or len(history) == 0:
-                st.info("Belum ada history deteksi. Silakan lakukan deteksi terlebih dahulu.")
-            else:
-                # Tampilkan history jika ada
-                st.success(f"Ditemukan {len(history)} hasil deteksi.")
-                for id, timestamp, image in history:
-                    try:
-                        image = Image.open(io.BytesIO(image))
-                        with st.expander(f"ID: {id}, Time: {timestamp}"):
-                            st.image(image, caption="Detected Image", use_container_width=False, width=500)
-                    except Exception as e:
-                        st.error(f"Error menampilkan gambar ID: {id}: {str(e)}")
-
-    # Delete all history
-    if st.sidebar.button('Delete All History'):
-        delete_all_detections()
-        st.sidebar.success("All detection history has been deleted.")
-        # Update the history display
-        history_placeholder.empty()
-        with history_placeholder.container():
-            st.header("Detection History")
-            st.info("No detection history available.")
+# Delete all history
+if st.sidebar.button('Delete All History'):
+    delete_all_detections()
+    st.sidebar.success("All detection history has been deleted.")
+    # Update the history display
+    history_placeholder.empty()
+    with history_placeholder.container():
+        st.header("Detection History")
+        st.info("No detection history available.")
