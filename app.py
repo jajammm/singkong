@@ -253,11 +253,11 @@ else:
     # Sidebar
     st.sidebar.header("Detection")
     
-    st.sidebar.header("API Status")
-    if GEMINI_CONFIGURED:
-        st.sidebar.success("✅ Gemini API terkonfigurasi dengan benar")
-    else:
-        st.sidebar.error("❌ Gemini API tidak terkonfigurasi. Periksa file secrets.toml")
+    # st.sidebar.header("API Status")
+    # if GEMINI_CONFIGURED:
+    #     st.sidebar.success("✅ Gemini API terkonfigurasi dengan benar")
+    # else:
+    #     st.sidebar.error("❌ Gemini API tidak terkonfigurasi. Periksa file secrets.toml")
 
     # Model Options
     confidence = float(st.sidebar.slider(
