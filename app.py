@@ -338,8 +338,60 @@ if source_radio == settings.IMAGE:
                     
                     # Tambahkan pemisah untuk setiap hasil deteksi
                     st.markdown("---")
-else:
-    st.error("Please select a valid source type!")
+elif source_radio == settings.WEBCAM:
+    st.header("Webcam Deteksi Daun Singkong")
+
+    webrtc_ctx = webrtc_streamer(
+        key="object-detection",
+        mode=WebRtcMode.SENDRECV,
+        rtc_configuration=RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}),
+        video_processor_factory=VideoTransformer,
+        async_processing=True,
+    )
+
+    if webrtc_ctx.video_processor:
+        webrtc_ctx.video_processor.confidence = confidence
+
+        # Jika deteksi berhasil, tampilkan hasilnya
+        if hasattr(webrtc_ctx.video_processor, 'detected_labels') and webrtc_ctx.video_processor.detected_labels:
+            st.markdown("---")
+            st.header("Hasil Deteksi dari Webcam")
+
+            for label in webrtc_ctx.video_processor.detected_labels:
+                with st.container():
+                    st.subheader(f"Deteksi: {label}")
+                    
+                    # Penjelasan dengan Gemini
+                    if GEMINI_CONFIGURED:
+                        with st.spinner(f"Mendapatkan penjelasan untuk {label}..."):
+                            explanation = get_disease_explanation(label)
+                            st.markdown(explanation)
+
+                            # Simpan gambar terakhir dari webcam
+                            if webrtc_ctx.video_frame_buffer and len(webrtc_ctx.video_frame_buffer) > 0:
+                                img_array = webrtc_ctx.video_frame_buffer[-1].to_ndarray(format="bgr24")
+                                pil_img = Image.fromarray(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB))
+
+                                col1, col2 = st.columns([1, 2])
+                                with col1:
+                                    if st.button(f"Simpan Gambar", key=f"save_{label}"):
+                                        save_detection(pil_img)
+                                        st.success("Gambar berhasil disimpan.")
+
+                                with col2:
+                                    pdf_data = create_detection_pdf(pil_img, label, 0.0, explanation)
+                                    if pdf_data:
+                                        filename = f"deteksi_webcam_{label.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                                        st.download_button(
+                                            label="📥 Download PDF",
+                                            data=pdf_data,
+                                            file_name=filename,
+                                            mime="application/pdf",
+                                            key=f"download_webcam_{label}"
+                                        )
+                    else:
+                        st.warning("Gemini API tidak terkonfigurasi dengan benar.")
+
 
 # Detection history and delete button
 if st.sidebar.button('Detection History'):
