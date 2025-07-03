@@ -1,6 +1,5 @@
 .streamlit/
 .streamlit/secrets.toml
-.streamlit/config.toml
 __pycache__/
 *.py[cod]
 *$py.class
