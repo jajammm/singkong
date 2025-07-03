@@ -22,8 +22,8 @@ SOURCES_LIST = [IMAGE, VIDEO, WEBCAM, RTSP, YOUTUBE]
 
 # Images config
 IMAGES_DIR = ROOT / 'images'
-DEFAULT_IMAGE = IMAGES_DIR / 'original.jpg'
-DEFAULT_DETECT_IMAGE = IMAGES_DIR / 'hasil.jpg'
+DEFAULT_IMAGE = IMAGES_DIR / 'original.png'
+DEFAULT_DETECT_IMAGE = IMAGES_DIR / 'hasil.png'
 
 # Videos config
 VIDEO_DIR = ROOT / 'videos'
@@ -41,3 +41,6 @@ SEGMENTATION_MODEL = MODEL_DIR / 'best.pt'
 
 # Webcam
 WEBCAM_PATH = 0
+
+
+

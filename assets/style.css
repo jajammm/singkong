@@ -1,0 +1,133 @@
+
+
+/* Latar Belakang Sidebar */
+[data-testid="stSidebar"] {
+    background-color: #B5D9AF; /* Hijau muda - dari ikon Chrome */
+}
+
+/* Sesuaikan warna teks di sidebar jika diperlukan untuk kontras */
+[data-testid="stSidebar"] * {
+    color: #333333; /* Abu-abu gelap untuk keterbacaan pada latar belakang hijau muda */
+}
+
+/* Gaya untuk Tombol Sidebar agar sesuai dengan CTA */
+.stButton>button {
+    background-color: #B5D9AF; /* Sama dengan latar belakang CTA */
+    color: #3C6A3C; /* Warna teks default, akan ditimpa saat hover/active */
+    border: 1px solid #3C6A3C;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    font-size: 1.0em;
+    width: 100%;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    outline: none; /* Hapus outline fokus default browser */
+}
+
+.stButton>button:hover {
+    background-color: #3C6A3C; /* Balikkan warna saat hover: latar belakang hijau lebih gelap */
+    color: white; /* Teks putih saat hover */
+    border-color: #3C6A3C;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    outline: none;
+}
+
+/* Gaya untuk tombol aktif atau halaman saat ini */
+.stButton>button.active-page,
+.stButton>button:focus:not(:hover),
+.stButton>button:active {
+    background-color: #3C6A3C; /* Hijau lebih gelap untuk tombol aktif/fokus */
+    font-weight: bold;
+    border-color: #3C6A3C;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    outline: none;
+}
+
+/* Targetkan TEKS di dalam tombol aktif/fokus secara spesifik */
+.stButton>button.active-page p,
+.stButton>button.active-page span,
+.stButton>button.active-page div,
+.stButton>button:focus:not(:hover) p,
+.stButton>button:focus:not(:hover) span,
+.stButton>button:focus:not(:hover) div,
+.stButton>button:active p,
+.stButton>button:active span,
+.stButton>button:active div {
+    color: white !important; /* Terapkan warna putih langsung ke elemen teks! */
+}
+
+
+/* --- ATURAN UNTUK ST.EXPANDER --- */
+
+/* Gaya untuk bagian judul st.expander (bagian yang bisa diklik) */
+[data-testid="stExpander"] summary {
+    color: #3C6A3C; /* Warna hijau gelap untuk teks judul normal */
+    font-weight: bold;
+    font-size: 1.1em; /* Sedikit lebih besar untuk penekanan */
+    padding: 5px; /* Tambahkan padding di sekitar teks */
+    border-radius: 5px; /* Sudut sedikit membulat */
+    transition: all 0.2s ease-in-out; /* Transisi halus untuk efek hover */
+    outline: none; /* Hapus outline fokus default browser */
+    cursor: pointer;
+}
+
+/* Targetkan elemen teks (span/p) di dalam summary untuk memastikan perubahan warna */
+[data-testid="stExpander"] summary span,
+[data-testid="stExpander"] summary p {
+    color: #3C6A3C; /* Warna teks default untuk elemen internal */
+    transition: color 0.2s ease-in-out; /* Transisi halus untuk warna teks */
+}
+
+/* Gaya saat hover/fokus pada judul expander */
+[data-testid="stExpander"] summary:hover,
+[data-testid="stExpander"] summary:focus {
+    background-color: #3C6A3C; /* Latar belakang hijau gelap saat hover/fokus */
+    outline: none !important; /* Pastikan tidak ada outline */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Bayangan lembut */
+}
+
+/* Pastikan TEKS di dalam summary menjadi putih saat hover/fokus */
+[data-testid="stExpander"] summary:hover span,
+[data-testid="stExpander"] summary:hover p,
+[data-testid="stExpander"] summary:focus span,
+[data-testid="stExpander"] summary:focus p {
+    color: white !important; /* Paksa teks menjadi putih saat hover/fokus */
+}
+
+
+/* Penyesuaian responsif */
+@media (max-width: 768px) {
+    .stButton>button {
+        font-size: 0.9em;
+        padding: 8px 12px;
+    }
+    [data-testid="stExpander"] summary {
+        font-size: 1em;
+    }
+    .main-content-container {
+        padding: 1.5em;
+        margin: 1em auto;
+    }
+    .main-content-container [data-testid="stVerticalBlock"] {
+        padding: 1em;
+        margin-bottom: 1em;
+    }
+}
+@media (max-width: 480px) {
+    .stButton>button {
+        font-size: 0.85em;
+        padding: 7px 10px;
+    }
+    [data-testid="stExpander"] summary {
+        font-size: 0.9em;
+    }
+    .main-content-container {
+        padding: 1em;
+        margin: 0.5em auto;
+    }
+    .main-content-container [data-testid="stVerticalBlock"] {
+        padding: 0.8em;
+        margin-bottom: 0.8em;
+    }
+}
