@@ -148,12 +148,3 @@ def show_main_page():
         </p>
         """, unsafe_allow_html=True
     )
-
-    st.markdown(
-        """
-        <div class="call-to-action">
-        🚀 Siap untuk memulai? Pilih **Halaman Deteksi** di sidebar kiri Anda untuk segera menganalisis daun singkong!
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
