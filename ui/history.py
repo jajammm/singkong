@@ -22,6 +22,6 @@ def show_history(conn):
                 st.error(f"Error menampilkan gambar ID: {id}: {str(e)}")
 
     # Tombol untuk menghapus semua histori deteksi
-    if st.button("Delete All History"):
+    if st.button("Hapus Semua Histori Deteksi"):
         delete_all_detections(conn)
         st.success("Semua histori deteksi telah dihapus.")
