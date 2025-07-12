@@ -71,7 +71,16 @@ def show_guide():
         unsafe_allow_html=True
     )
 
-    st.markdown('<h2 class="guide-title">📖 Panduan Penggunaan Aplikasi 📖</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="guide-title">Panduan Penggunaan Aplikasi</h2>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <p>
+        Berikut adalah panduan langkah demi langkah untuk menggunakan aplikasi deteksi penyakit pada daun singkong. Panduan ini dirancang untuk membantu Anda memahami cara kerja aplikasi, mulai dari membuka halaman deteksi hingga melihat hasil deteksi penyakit.
+        Pastikan Anda mengikuti setiap langkah dengan seksama untuk mendapatkan hasil yang optimal.
+        </p>
+        """,
+        unsafe_allow_html=True
+    )
 
     # Definisi langkah-langkah panduan beserta teks penjelasan dan path gambar
     guide_steps = [
@@ -131,7 +140,7 @@ def show_guide():
                     img = Image.open(img_path)
                     with cols[idx]:
                         # use_container_width=True akan mengatur width: 100% dari kolom
-                        st.image(img, caption=f"Langkah {i+1}.{idx+1}", use_container_width=True)
+                        st.image(img, caption=f"Gambar  Langkah {i+1}", use_container_width=True)
                 except FileNotFoundError:
                     with cols[idx]:
                         st.warning(f"Gambar tidak ditemukan: {img_path}. Pastikan file ada di folder 'assets/guide'.")
