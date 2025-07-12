@@ -173,4 +173,3 @@ def show_main_page():
                 except Exception as e:
                     with cols[idx]:
                         st.error(f"Error memuat gambar {img_path}: {e}")
-        st.markdown("<hr>", unsafe_allow_html=True) # Tambahkan pemisah setelah setiap penyakit
