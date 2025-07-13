@@ -23,16 +23,16 @@ def get_disease_explanation(disease_label):
     try:
         # Membuat prompt untuk API Gemini
         prompt = f"""
-        Berikan penjelasan detail tentang penyakit daun singkong "{disease_label}" dengan format berikut (langsung jelaskan saja tanpa harus mengiyakan perintah saya):
+        Berikan penjelasan detail tentang penyakit daun singkong "{disease_label}" dengan format berikut (langsung jelaskan saja tanpa harus mengiyakan perintah saya) dan juga jika labelnya HEALTY berarti singkong itu sehat:
         
         PENJELASAN:
-        [Jelaskan gejala dan penyebab penyakit pada daun singkong tersebut secara detail.]
+        [Jelaskan gejala dan penyebab penyakit pada daun singkong tersebut secara detail. Jika labelnya HEALTY berarti singkong itu sehat]
         
         DAMPAK:
-        [Jelaskan dampak penyakit ini terhadap tanaman singkong]
+        [Jelaskan dampak penyakit ini terhadap tanaman singkong. Jika labelnya HEALTY berarti singkong itu sehat]
         
         REKOMENDASI PENANGANAN:
-        [Berikan 3-5 rekomendasi penanganan yang bisa dilakukan petani]
+        [Berikan 3-5 rekomendasi penanganan yang bisa dilakukan petani. Jika labelnya HEALTY berarti singkong itu sehat]
         """
         
         # Menggunakan model Gemini untuk menghasilkan konten
