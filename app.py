@@ -66,3 +66,5 @@ elif st.session_state.page == "detection":
     show_detection_page(conn, model, GEMINI_CONFIGURED)
 elif st.session_state.page == "history":
     show_history(conn)
+    
+    

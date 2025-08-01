@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+from ui.detection import show_detection_page
 from PIL import Image
 
 def show_main_page():

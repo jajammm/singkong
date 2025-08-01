@@ -90,23 +90,18 @@ def show_guide():
             "images": ["assets/guide/step_1.png"]
         },
         {
-            "title": "Memilih Metode Deteksi",
-            "text": "Anda memiliki dua pilihan untuk mengunggah gambar: melalui 'Upload Gambar' dari perangkat Anda atau menggunakan 'Webcam' secara langsung. Pilih metode yang paling sesuai dengan kebutuhan Anda.",
-            "images": ["assets/guide/step_2.png"]
-        },
-        {
             "title": "Memilih Tingkat Kepercayaan Model (Opsional)",
             "text": "Anda dapat menyesuaikan 'Tingkat Kepercayaan Model' menggunakan slider. Ini menentukan seberapa yakin model harus dalam mendeteksi objek sebelum menampilkannya. Nilai yang lebih tinggi berarti deteksi yang lebih ketat.",
             "images": ["assets/guide/step_3.png"]
         },
         {
-            "title": "Mengunggah Gambar (Jika Menggunakan Metode Upload Gambar)",
+            "title": "Mengunggah Gambar",
             "text": "Jika Anda memilih 'Upload Gambar', klik tombol 'Browse files' dan pilih gambar daun singkong dari galeri perangkat Anda. Pastikan gambar jelas dan fokus pada daun.",
             "images": ["assets/guide/step_4.png"]
         },
         {
             "title": "Melakukan Deteksi",
-            "text": "Setelah gambar diunggah atau webcam diaktifkan, klik tombol 'Deteksi Objek' untuk memproses gambar. Model YOLO akan menganalisis daun untuk mengidentifikasi potensi penyakit.",
+            "text": "Setelah gambar diunggah, klik tombol 'Deteksi Objek' untuk memproses gambar. Model YOLO akan menganalisis daun untuk mengidentifikasi potensi penyakit.",
             "images": ["assets/guide/step_5.png"]
         },
         {
