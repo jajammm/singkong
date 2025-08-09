@@ -90,14 +90,14 @@ def show_guide():
             "images": ["assets/guide/step_1.png"]
         },
         {
-            "title": "Memilih Tingkat Kepercayaan Model (Opsional)",
-            "text": "Anda dapat menyesuaikan 'Tingkat Kepercayaan Model' menggunakan slider. Ini menentukan seberapa yakin model harus dalam mendeteksi objek sebelum menampilkannya. Nilai yang lebih tinggi berarti deteksi yang lebih ketat.",
-            "images": ["assets/guide/step_3.png"]
-        },
-        {
             "title": "Mengunggah Gambar",
             "text": "Jika Anda memilih 'Upload Gambar', klik tombol 'Browse files' dan pilih gambar daun singkong dari galeri perangkat Anda. Pastikan gambar jelas dan fokus pada daun.",
             "images": ["assets/guide/step_4.png"]
+        },
+        {
+            "title": "Memilih Tingkat Kepercayaan Model (Opsional)",
+            "text": "Anda dapat menyesuaikan 'Tingkat Kepercayaan Model' menggunakan slider. Ini menentukan seberapa yakin model harus dalam mendeteksi objek sebelum menampilkannya. Nilai yang lebih tinggi berarti deteksi yang lebih ketat.",
+            "images": ["assets/guide/step_3.png"]
         },
         {
             "title": "Melakukan Deteksi",

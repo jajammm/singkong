@@ -12,10 +12,9 @@ def show_detection_page(conn, model, GEMINI_CONFIGURED):
     st.title("Deteksi Penyakit Daun Singkong")
 
     # Pilihan sumber input: hanya unggah gambar
-    
-    confidence = st.sidebar.slider("Pilih Tingkat Kepercayaan Model", 0.0, 1.0, 0.3)
     st.sidebar.markdown("### Unggah Gambar")
     source_img = st.sidebar.file_uploader("Pilih Gambar...", type=("jpg", "jpeg", "png", 'bmp', 'webp'))
+    confidence = st.sidebar.slider("Pilih Tingkat Kepercayaan Model (Opsional)", 0.0, 1.0, 0.3)
     detect_button = st.sidebar.button('Deteksi Objek')
     
 
