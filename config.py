@@ -23,7 +23,7 @@ def get_disease_explanation(disease_label):
     try:
         # Membuat prompt untuk API Gemini
         prompt = f"""
-        Berikan penjelasan detail tentang penyakit daun singkong "{disease_label}" dengan format berikut (langsung jelaskan saja tanpa harus mengiyakan perintah saya). Jika labelnya HEALTHY berarti singkong itu sehat dan jika label yg dideteksi selain HEALTHY, anda jangan menjelaskan HEALTHY:
+        Berikan penjelasan detail tentang penyakit daun singkong "{disease_label}" dengan format berikut (langsung jelaskan saja tanpa harus mengiyakan perintah saya). Jika labelnya HEALTHY berarti singkong itu sehat dan jika label yg dideteksi selain HEALTHY, anda jangan menjelaskan HEALTHY. Dan jika label yang terdeteksi yaitu CGM, itu berarti Cassava Green Mite. Tidak perlu menjelaskan label CGM jika yang terdeteksi bukan CGM. Anda tidak perlu mengonfirmasi perintah saya, cukup jelaskan saja/:
 
         PENJELASAN:
         [Jelaskan gejala dan penyebab penyakit pada daun singkong tersebut secara detail. Jika labelnya HEALTHY, berikan penjelasan mengapa daunnya sehat]
